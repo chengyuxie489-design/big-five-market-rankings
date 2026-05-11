@@ -241,9 +241,10 @@ async function serveStatic(req, res) {
   try {
     const body = await readFile(filePath);
     const type = mimeTypes[extname(filePath)] || "application/octet-stream";
+    const shouldRevalidate = type.includes("html") || type.includes("css") || type.includes("javascript");
     res.writeHead(200, {
       "Content-Type": type,
-      "Cache-Control": type.includes("html") ? "no-cache" : "public, max-age=3600"
+      "Cache-Control": shouldRevalidate ? "no-cache" : "public, max-age=3600"
     });
     res.end(body);
   } catch {

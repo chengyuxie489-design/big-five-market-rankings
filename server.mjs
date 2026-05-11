@@ -10,6 +10,7 @@ const API_BASE = "https://transfermarkt-api.fly.dev";
 const CACHE_TTL_MS = Number(process.env.CACHE_TTL_MS || 30 * 60 * 1000);
 const PROFILE_LIMIT_OVERALL = Number(process.env.PROFILE_LIMIT_OVERALL || 60);
 const PROFILE_LIMIT_LEAGUE = Number(process.env.PROFILE_LIMIT_LEAGUE || 40);
+const CLUB_LIMIT_PER_LEAGUE = Number(process.env.CLUB_LIMIT_PER_LEAGUE || 8);
 
 const leagues = [
   { id: "GB1", name: "Premier League", nameZh: "英超", country: "England", accent: "#31d7a6" },
@@ -106,7 +107,7 @@ async function mapLimit(items, limit, worker) {
 
 async function loadLeague(league) {
   const clubsPayload = await fetchJson(`/competitions/${league.id}/clubs`);
-  const clubs = clubsPayload.clubs || [];
+  const clubs = (clubsPayload.clubs || []).slice(0, CLUB_LIMIT_PER_LEAGUE);
   const playerGroups = await mapLimit(clubs, 4, async (club) => {
     try {
       const payload = await fetchJson(`/clubs/${club.id}/players`);

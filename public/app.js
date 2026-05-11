@@ -174,6 +174,7 @@ function renderTabs() {
 function renderRows() {
   const players = getActivePlayers();
   els.visibleCount.textContent = t("visible", { count: players.length });
+  const rankField = state.active === "overall" ? "overallRank" : "leagueRank";
 
   if (!players.length) {
     const row = document.createElement("tr");
@@ -184,7 +185,7 @@ function renderRows() {
 
   const rows = players.map((player) => {
     const row = els.rowTemplate.content.firstElementChild.cloneNode(true);
-    row.querySelector(".rank-cell").textContent = `#${player.rank}`;
+    row.querySelector(".rank-cell").textContent = `#${player[rankField]}`;
     const link = row.querySelector(".player-cell");
     link.href = player.profileUrl;
     const image = row.querySelector("img");

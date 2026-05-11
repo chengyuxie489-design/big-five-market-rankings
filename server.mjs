@@ -158,10 +158,10 @@ async function applyProfile(player) {
   }
 }
 
-function addRanks(players) {
+function addRanks(players, field) {
   players.sort((a, b) => b.marketValue - a.marketValue || a.name.localeCompare(b.name));
   players.forEach((player, index) => {
-    player.rank = index + 1;
+    player[field] = index + 1;
   });
   return players;
 }
@@ -169,8 +169,8 @@ function addRanks(players) {
 async function buildRankings() {
   const loadedLeagues = await mapLimit(leagues, 2, loadLeague);
   const allPlayers = loadedLeagues.flatMap((league) => league.players);
-  addRanks(allPlayers);
-  loadedLeagues.forEach((league) => addRanks(league.players));
+  addRanks(allPlayers, "overallRank");
+  loadedLeagues.forEach((league) => addRanks(league.players, "leagueRank"));
 
   const profileMap = new Map();
   allPlayers.slice(0, PROFILE_LIMIT_OVERALL).forEach((player) => profileMap.set(player.id, player));

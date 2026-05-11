@@ -1,0 +1,23 @@
+{
+  "name": "big-five-market-rankings",
+  "version": "1.0.0",
+  "description": "Live Transfermarkt market value rankings for Europe's big five leagues.",
+  "type": "module",
+  "scripts": {
+    "start": "node server.mjs",
+    "dev": "node server.mjs"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "football",
+    "transfermarkt",
+    "premier-league",
+    "laliga",
+    "bundesliga",
+    "serie-a",
+    "ligue-1"
+  ],
+  "license": "MIT"
+}

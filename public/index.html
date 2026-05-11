@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>欧洲五大联赛德转身价排行榜</title>
+    <meta
+      name="description"
+      content="Live Transfermarkt market value rankings for the Premier League, LaLiga, Bundesliga, Serie A and Ligue 1."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <header class="site-header">
+      <nav class="topbar" aria-label="Primary">
+        <a class="brand" href="#overall" aria-label="Big Five Market Values">
+          <span class="brand-mark">5</span>
+          <span data-i18n="brand">五大联赛身价榜</span>
+        </a>
+        <div class="topbar-actions">
+          <button class="icon-button" id="refreshButton" type="button" title="Refresh">
+            <span aria-hidden="true">↻</span>
+          </button>
+          <div class="lang-switch" aria-label="Language">
+            <button class="lang-option active" data-lang="zh" type="button">中</button>
+            <button class="lang-option" data-lang="en" type="button">EN</button>
+          </div>
+        </div>
+      </nav>
+
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow" data-i18n="eyebrow">Transfermarkt 实时数据</p>
+          <h1 data-i18n="headline">欧洲五大联赛球员身价排行榜</h1>
+          <p class="hero-text" data-i18n="subhead">
+            聚合英超、西甲、德甲、意甲、法甲本赛季球员德转身价，支持总榜和联赛内榜单切换。
+          </p>
+        </div>
+        <div class="scoreboard" aria-label="League totals" id="leagueSummary"></div>
+      </section>
+    </header>
+
+    <main>
+      <section class="controls-band">
+        <div class="controls">
+          <div class="tabs" id="tabs" role="tablist" aria-label="Ranking views"></div>
+          <label class="search-box">
+            <span data-i18n="searchLabel">搜索</span>
+            <input id="searchInput" type="search" autocomplete="off" placeholder="球员 / 俱乐部 / 位置" />
+          </label>
+          <label class="limit-box">
+            <span data-i18n="limitLabel">显示</span>
+            <select id="limitSelect">
+              <option value="20">Top 20</option>
+              <option value="40" selected>Top 40</option>
+              <option value="80">Top 80</option>
+              <option value="all">All</option>
+            </select>
+          </label>
+        </div>
+        <div class="meta-line">
+          <span id="updatedAt">Loading...</span>
+          <span id="sourceNote"></span>
+        </div>
+      </section>
+
+      <section class="ranking-shell" id="overall">
+        <div class="section-heading">
+          <div>
+            <p class="eyebrow" data-i18n="rankingEyebrow">Ranking</p>
+            <h2 id="rankingTitle">总身价排行榜</h2>
+          </div>
+          <div class="value-chip" id="visibleCount">0</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th data-i18n="rank">排名</th>
+                <th data-i18n="player">球员</th>
+                <th data-i18n="club">俱乐部</th>
+                <th data-i18n="league">联赛</th>
+                <th data-i18n="position">位置</th>
+                <th data-i18n="age">年龄</th>
+                <th data-i18n="value">身价</th>
+              </tr>
+            </thead>
+            <tbody id="rankingBody">
+              <tr>
+                <td colspan="7" class="empty-state">Loading live rankings...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <template id="playerRowTemplate">
+      <tr>
+        <td class="rank-cell"></td>
+        <td>
+          <a class="player-cell" target="_blank" rel="noreferrer">
+            <span class="portrait-wrap"><img alt="" loading="lazy" /></span>
+            <span>
+              <strong></strong>
+              <small></small>
+            </span>
+          </a>
+        </td>
+        <td class="club-cell"></td>
+        <td class="league-cell"></td>
+        <td class="position-cell"></td>
+        <td class="age-cell"></td>
+        <td class="value-cell"></td>
+      </tr>
+    </template>
+
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

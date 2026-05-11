@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: big-five-market-rankings
+    runtime: node
+    plan: free
+    buildCommand: ""
+    startCommand: "node server.mjs"
+    healthCheckPath: /health
+    envVars:
+      - key: CACHE_TTL_MS
+        value: "1800000"

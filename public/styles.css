@@ -306,9 +306,6 @@ table {
 }
 
 th {
-  position: sticky;
-  top: 97px;
-  z-index: 2;
   background: #0d1219;
   color: var(--muted);
   font-size: 0.78rem;
@@ -447,7 +444,4 @@ tbody tr:hover {
     position: static;
   }
 
-  th {
-    top: 0;
-  }
 }

@@ -64,7 +64,15 @@ const state = {
   limit: "40"
 };
 
-const leagueEmblems = {
+const leagueLogos = {
+  GB1: "https://r2.thesportsdb.com/images/media/league/logo/4c377s1535214890.png",
+  ES1: "https://r2.thesportsdb.com/images/media/league/logo/gq4b1r1687707889.png",
+  L1: "https://r2.thesportsdb.com/images/media/league/logo/620ayu1534764709.png",
+  IT1: "https://r2.thesportsdb.com/images/media/league/logo/b0hv7o1719640507.png",
+  FR1: "https://r2.thesportsdb.com/images/media/league/logo/pp71fp1719637991.png"
+};
+
+const leagueLogoFallback = {
   GB1: "PL",
   ES1: "LL",
   L1: "BL",
@@ -154,7 +162,10 @@ function renderSummary() {
       card.innerHTML = `
         <div class="league-card-top">
           <strong>${leagueLabel(league)}</strong>
-          <span class="league-emblem" aria-hidden="true">${leagueEmblems[league.id] || league.id}</span>
+          <span class="league-logo-tile" aria-hidden="true">
+            <img class="league-logo" src="${leagueLogos[league.id]}" alt="" onerror="this.hidden=true; this.nextElementSibling.style.display='block';" />
+            <span class="league-logo-fallback">${leagueLogoFallback[league.id] || league.id}</span>
+          </span>
         </div>
         <span>${t("players", { count: league.playerCount })} · ${t("total")}</span>
         <b>${formatValue(league.totalMarketValue)}</b>

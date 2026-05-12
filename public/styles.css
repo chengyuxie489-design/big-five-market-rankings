@@ -5,6 +5,9 @@
   --line: rgba(255, 255, 255, 0.1);
   --text: #f6f8fb;
   --muted: #9da9bb;
+  --title-a: #ffffff;
+  --title-b: #c7f000;
+  --title-c: #31d7a6;
   --green: #31d7a6;
   --gold: #f7cf46;
   --red: #ff4d5f;
@@ -224,20 +227,41 @@ p {
 h1 {
   max-width: none;
   margin-bottom: 26px;
-  font-size: clamp(2.7rem, 4.15vw, 5.35rem);
-  line-height: 1.02;
-  letter-spacing: 0.11em;
+  font-family: "Noto Sans SC", "Microsoft YaHei", "PingFang SC", Inter, sans-serif;
+  font-size: clamp(2.45rem, 4vw, 5rem);
+  line-height: 1.06;
+  letter-spacing: 0.055em;
   font-weight: 900;
   text-transform: uppercase;
   white-space: nowrap;
+  color: transparent;
+  background: linear-gradient(96deg, var(--title-a) 0%, #eaf5ff 32%, var(--title-b) 68%, var(--title-c) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+  text-shadow: 0 18px 46px rgba(49, 215, 166, 0.12);
+}
+
+:lang(en) h1 {
+  max-width: 1180px;
+  font-family: Oswald, Inter, Arial, sans-serif;
+  font-size: clamp(2.65rem, 5.2vw, 6.2rem);
+  line-height: 0.95;
+  letter-spacing: 0.035em;
+  white-space: normal;
+  text-wrap: balance;
 }
 
 .hero-text {
   max-width: 920px;
-  color: #d4dbe6;
+  color: #cdd8e6;
   font-size: clamp(1rem, 1.4vw, 1.24rem);
   line-height: 1.7;
   letter-spacing: 0.04em;
+}
+
+:lang(en) .hero-text {
+  max-width: 980px;
+  letter-spacing: 0.015em;
 }
 
 .scoreboard {
@@ -575,8 +599,12 @@ tbody tr:hover {
   }
 
   h1 {
-    font-size: 2.65rem;
+    font-size: 2.45rem;
     white-space: normal;
+  }
+
+  :lang(en) h1 {
+    font-size: 3rem;
   }
 
   .league-silhouettes {

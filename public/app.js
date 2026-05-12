@@ -64,6 +64,14 @@ const state = {
   limit: "40"
 };
 
+const leagueEmblems = {
+  GB1: "PL",
+  ES1: "LL",
+  L1: "BL",
+  IT1: "SA",
+  FR1: "L1"
+};
+
 const els = {
   leagueSummary: document.querySelector("#leagueSummary"),
   tabs: document.querySelector("#tabs"),
@@ -141,10 +149,13 @@ function renderSummary() {
   els.leagueSummary.replaceChildren(
     ...state.data.leagues.map((league) => {
       const card = document.createElement("article");
-      card.className = "league-card";
+      card.className = `league-card league-card-${league.id.toLowerCase()}`;
       card.style.setProperty("--accent", league.accent);
       card.innerHTML = `
-        <strong>${leagueLabel(league)}</strong>
+        <div class="league-card-top">
+          <strong>${leagueLabel(league)}</strong>
+          <span class="league-emblem" aria-hidden="true">${leagueEmblems[league.id] || league.id}</span>
+        </div>
         <span>${t("players", { count: league.playerCount })} · ${t("total")}</span>
         <b>${formatValue(league.totalMarketValue)}</b>
       `;

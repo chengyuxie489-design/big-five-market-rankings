@@ -78,6 +78,39 @@ const fallbackPlayers = {
   ]
 };
 
+const fallbackPlayerImages = {
+  "Erling Haaland": "https://r2.thesportsdb.com/images/media/player/cutout/un3jr11769182465.png",
+  "Bukayo Saka": "https://r2.thesportsdb.com/images/media/player/cutout/xfwok41769331816.png",
+  "Phil Foden": "https://r2.thesportsdb.com/images/media/player/cutout/lbn4sx1769182620.png",
+  "Declan Rice": "https://r2.thesportsdb.com/images/media/player/cutout/do2pew1694204464.png",
+  "Rodri": "https://r2.thesportsdb.com/images/media/player/cutout/0ml2zi1761148957.png",
+  "Cole Palmer": "https://r2.thesportsdb.com/images/media/player/cutout/fn0pzc1757010119.png",
+  "Moises Caicedo": "https://r2.thesportsdb.com/images/media/player/cutout/u3feyy1757002398.png",
+  "Bruno Fernandes": "https://r2.thesportsdb.com/images/media/player/cutout/jhasls1766826690.png",
+  "Lamine Yamal": "https://r2.thesportsdb.com/images/media/player/cutout/m9n4ja1761512633.png",
+  "Kylian Mbappé": "https://r2.thesportsdb.com/images/media/player/cutout/h9u9vz1733653583.png",
+  "Jude Bellingham": "https://r2.thesportsdb.com/images/media/player/cutout/trk5271750271712.png",
+  "Pedri": "https://r2.thesportsdb.com/images/media/player/cutout/srwppu1424795582.png",
+  "Vinicius Junior": "https://r2.thesportsdb.com/images/media/player/cutout/ejuxsh1750271859.png",
+  "Federico Valverde": "https://r2.thesportsdb.com/images/media/player/cutout/5249151768499204.png",
+  "Rodrygo": "https://r2.thesportsdb.com/images/media/player/cutout/uzoghw1733653286.png",
+  "Gavi": "https://r2.thesportsdb.com/images/media/player/cutout/29005498.png",
+  "Florian Wirtz": "https://r2.thesportsdb.com/images/media/player/cutout/8t6bzo1757088899.png",
+  "Jamal Musiala": "https://r2.thesportsdb.com/images/media/player/cutout/vbkv611756416067.png",
+  "Harry Kane": "https://r2.thesportsdb.com/images/media/player/cutout/j4ouvd1756408895.png",
+  "Josko Gvardiol": "https://r2.thesportsdb.com/images/media/player/cutout/mmowa11769183247.png",
+  "Xavi Simons": "https://r2.thesportsdb.com/images/media/player/cutout/uc5tjn1757016055.png",
+  "Michael Olise": "https://r2.thesportsdb.com/images/media/player/cutout/r4vx6b1756408807.png",
+  "Benjamin Sesko": "https://r2.thesportsdb.com/images/media/player/cutout/lm21y71766827016.png",
+  "Aleksandar Pavlovic": "https://r2.thesportsdb.com/images/media/player/cutout/22ti3z1756408943.png",
+  "Lautaro Martínez": "https://r2.thesportsdb.com/images/media/player/cutout/vwxq811759408924.png",
+  "Nicolò Barella": "https://r2.thesportsdb.com/images/media/player/cutout/k03sge1759408783.png",
+  "Khvicha Kvaratskhelia": "https://r2.thesportsdb.com/images/media/player/cutout/n4iv5t1766335312.png",
+  "Alessandro Bastoni": "https://r2.thesportsdb.com/images/media/player/cutout/hwixpa1759408795.png",
+  "Rafael Leão": "https://r2.thesportsdb.com/images/media/player/cutout/tlgrvf1758892567.png",
+  "Marcus Thuram": "https://r2.thesportsdb.com/images/media/player/cutout/aykui01759408989.png"
+};
+
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
   ".css": "text/css; charset=utf-8",
@@ -198,7 +231,7 @@ function buildFallbackLeague(league) {
       age,
       nationality,
       marketValue,
-      imageUrl: null,
+      imageUrl: fallbackPlayerImages[name] || null,
       profileUrl: `https://www.transfermarkt.com/-/profil/spieler/${id}`
     }))
   };
@@ -276,7 +309,7 @@ async function getFallbackImage(playerName) {
 
 async function enrichFallbackImages(players) {
   await mapLimit(players, 6, async (player) => {
-    player.imageUrl = await getFallbackImage(player.name);
+    player.imageUrl = player.imageUrl || await getFallbackImage(player.name);
     return player;
   });
 }

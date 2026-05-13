@@ -8,9 +8,10 @@ const publicDir = join(__dirname, "public");
 const PORT = Number(process.env.PORT || 3000);
 const API_BASE = "https://transfermarkt-api.fly.dev";
 const CACHE_TTL_MS = Number(process.env.CACHE_TTL_MS || 30 * 60 * 1000);
-const PROFILE_LIMIT_OVERALL = Number(process.env.PROFILE_LIMIT_OVERALL || 60);
-const PROFILE_LIMIT_LEAGUE = Number(process.env.PROFILE_LIMIT_LEAGUE || 40);
+const PROFILE_LIMIT_OVERALL = Number(process.env.PROFILE_LIMIT_OVERALL || 20);
+const PROFILE_LIMIT_LEAGUE = Number(process.env.PROFILE_LIMIT_LEAGUE || 8);
 const CLUB_LIMIT_PER_LEAGUE = Number(process.env.CLUB_LIMIT_PER_LEAGUE || 8);
+const UPSTREAM_TIMEOUT_MS = Number(process.env.UPSTREAM_TIMEOUT_MS || 12000);
 
 const leagues = [
   { id: "GB1", name: "Premier League", nameZh: "英超", country: "England", accent: "#31d7a6" },
@@ -19,6 +20,59 @@ const leagues = [
   { id: "IT1", name: "Serie A", nameZh: "意甲", country: "Italy", accent: "#4aa3ff" },
   { id: "FR1", name: "Ligue 1", nameZh: "法甲", country: "France", accent: "#c7f000" }
 ];
+
+const fallbackPlayers = {
+  GB1: [
+    ["418560", "Erling Haaland", "Man City", "Centre-Forward", 25, ["Norway"], 200000000],
+    ["581678", "Bukayo Saka", "Arsenal", "Right Winger", 24, ["England"], 150000000],
+    ["433177", "Phil Foden", "Man City", "Attacking Midfield", 25, ["England"], 140000000],
+    ["406635", "Declan Rice", "Arsenal", "Defensive Midfield", 27, ["England"], 120000000],
+    ["401173", "Rodri", "Man City", "Defensive Midfield", 29, ["Spain"], 110000000],
+    ["568177", "Cole Palmer", "Chelsea", "Attacking Midfield", 24, ["England"], 110000000],
+    ["580195", "Moises Caicedo", "Chelsea", "Defensive Midfield", 24, ["Ecuador"], 90000000],
+    ["357565", "Bruno Fernandes", "Man United", "Attacking Midfield", 31, ["Portugal"], 50000000]
+  ],
+  ES1: [
+    ["937958", "Lamine Yamal", "Barcelona", "Right Winger", 18, ["Spain"], 200000000],
+    ["342229", "Kylian Mbappé", "Real Madrid", "Centre-Forward", 27, ["France"], 200000000],
+    ["683840", "Jude Bellingham", "Real Madrid", "Attacking Midfield", 22, ["England"], 180000000],
+    ["937955", "Pedri", "Barcelona", "Central Midfield", 23, ["Spain"], 150000000],
+    ["371998", "Vinicius Junior", "Real Madrid", "Left Winger", 25, ["Brazil"], 150000000],
+    ["646740", "Federico Valverde", "Real Madrid", "Central Midfield", 27, ["Uruguay"], 130000000],
+    ["646740", "Rodrygo", "Real Madrid", "Right Winger", 25, ["Brazil"], 100000000],
+    ["580195", "Gavi", "Barcelona", "Central Midfield", 21, ["Spain"], 90000000]
+  ],
+  L1: [
+    ["487969", "Florian Wirtz", "Bayer Leverkusen", "Attacking Midfield", 23, ["Germany"], 140000000],
+    ["580195", "Jamal Musiala", "Bayern Munich", "Attacking Midfield", 23, ["Germany"], 140000000],
+    ["418560", "Harry Kane", "Bayern Munich", "Centre-Forward", 32, ["England"], 90000000],
+    ["475959", "Josko Gvardiol", "RB Leipzig", "Centre-Back", 24, ["Croatia"], 70000000],
+    ["598577", "Xavi Simons", "RB Leipzig", "Attacking Midfield", 23, ["Netherlands"], 70000000],
+    ["369081", "Michael Olise", "Bayern Munich", "Right Winger", 24, ["France"], 65000000],
+    ["418560", "Benjamin Sesko", "RB Leipzig", "Centre-Forward", 22, ["Slovenia"], 65000000],
+    ["418560", "Aleksandar Pavlovic", "Bayern Munich", "Defensive Midfield", 22, ["Germany"], 55000000]
+  ],
+  IT1: [
+    ["581678", "Lautaro Martínez", "Inter", "Centre-Forward", 28, ["Argentina"], 95000000],
+    ["580195", "Nicolò Barella", "Inter", "Central Midfield", 29, ["Italy"], 80000000],
+    ["598577", "Khvicha Kvaratskhelia", "Napoli", "Left Winger", 25, ["Georgia"], 80000000],
+    ["580195", "Alessandro Bastoni", "Inter", "Centre-Back", 27, ["Italy"], 75000000],
+    ["580195", "Rafael Leão", "AC Milan", "Left Winger", 26, ["Portugal"], 70000000],
+    ["580195", "Marcus Thuram", "Inter", "Centre-Forward", 28, ["France"], 65000000],
+    ["580195", "Gleison Bremer", "Juventus", "Centre-Back", 29, ["Brazil"], 60000000],
+    ["580195", "Kenan Yildiz", "Juventus", "Second Striker", 21, ["Turkey"], 50000000]
+  ],
+  FR1: [
+    ["745648", "João Neves", "Paris Saint-Germain", "Central Midfield", 21, ["Portugal"], 110000000],
+    ["576024", "Warren Zaïre-Emery", "Paris Saint-Germain", "Central Midfield", 20, ["France"], 80000000],
+    ["576024", "Vitinha", "Paris Saint-Germain", "Central Midfield", 26, ["Portugal"], 80000000],
+    ["576024", "Achraf Hakimi", "Paris Saint-Germain", "Right-Back", 27, ["Morocco"], 70000000],
+    ["576024", "Bradley Barcola", "Paris Saint-Germain", "Left Winger", 23, ["France"], 70000000],
+    ["576024", "Ousmane Dembélé", "Paris Saint-Germain", "Right Winger", 29, ["France"], 60000000],
+    ["576024", "Gonçalo Ramos", "Paris Saint-Germain", "Centre-Forward", 24, ["Portugal"], 50000000],
+    ["576024", "Nuno Mendes", "Paris Saint-Germain", "Left-Back", 24, ["Portugal"], 55000000]
+  ]
+};
 
 const mimeTypes = {
   ".html": "text/html; charset=utf-8",
@@ -51,18 +105,31 @@ function json(res, status, payload) {
 }
 
 async function fetchJson(path) {
-  const response = await fetch(`${API_BASE}${path}`, {
-    headers: {
-      "Accept": "application/json",
-      "User-Agent": "BigFiveMarketRankings/1.0"
-    }
-  });
+  let lastError;
+  for (let attempt = 1; attempt <= 3; attempt++) {
+    try {
+      const response = await fetch(`${API_BASE}${path}`, {
+        signal: AbortSignal.timeout(UPSTREAM_TIMEOUT_MS),
+        headers: {
+          "Accept": "application/json",
+          "User-Agent": "BigFiveMarketRankings/1.0"
+        }
+      });
 
-  if (!response.ok) {
-    throw new Error(`${path} returned ${response.status}`);
+      if (response.ok) {
+        return response.json();
+      }
+      lastError = new Error(`${path} returned ${response.status}`);
+    } catch (error) {
+      lastError = error;
+    }
+
+    if (attempt < 3) {
+      await new Promise((resolve) => setTimeout(resolve, 650 * attempt));
+    }
   }
 
-  return response.json();
+  throw lastError;
 }
 
 function formatClubName(name) {
@@ -89,6 +156,30 @@ function normalizePlayer(player, club, league) {
     marketValue: Number(player.marketValue || 0),
     imageUrl: null,
     profileUrl: `https://www.transfermarkt.com/-/profil/spieler/${player.id}`
+  };
+}
+
+function buildFallbackLeague(league) {
+  return {
+    ...league,
+    sourceUpdatedAt: new Date("2026-05-11T00:00:00.000Z").toISOString(),
+    isFallback: true,
+    players: (fallbackPlayers[league.id] || []).map(([id, name, club, position, age, nationality, marketValue], index) => ({
+      id: `${id}-${league.id}-${index}`,
+      name,
+      club,
+      clubId: "",
+      league: league.id,
+      leagueName: league.name,
+      leagueNameZh: league.nameZh,
+      country: league.country,
+      position,
+      age,
+      nationality,
+      marketValue,
+      imageUrl: null,
+      profileUrl: `https://www.transfermarkt.com/-/profil/spieler/${id}`
+    }))
   };
 }
 
@@ -167,8 +258,48 @@ function addRanks(players, field) {
 }
 
 async function buildRankings() {
-  const loadedLeagues = await mapLimit(leagues, 2, loadLeague);
+  const loadedLeagues = await mapLimit(leagues, 2, async (league) => {
+    try {
+      return await loadLeague(league);
+    } catch (error) {
+      return {
+        ...league,
+        sourceUpdatedAt: null,
+        loadError: error.message,
+        players: []
+      };
+    }
+  });
   const allPlayers = loadedLeagues.flatMap((league) => league.players);
+  if (!allPlayers.length) {
+    const fallbackLeagues = leagues.map(buildFallbackLeague);
+    const fallbackAllPlayers = fallbackLeagues.flatMap((league) => league.players);
+    addRanks(fallbackAllPlayers, "overallRank");
+    fallbackLeagues.forEach((league) => addRanks(league.players, "leagueRank"));
+    return {
+      refreshedAt: new Date().toISOString(),
+      cacheTtlMs: CACHE_TTL_MS,
+      fallback: true,
+      source: {
+        name: "Cached emergency snapshot",
+        url: "https://www.transfermarkt.com",
+        note: "Live Transfermarkt API is temporarily unavailable, so an emergency snapshot is shown until the source recovers."
+      },
+      leagues: fallbackLeagues.map((league) => ({
+        id: league.id,
+        name: league.name,
+        nameZh: league.nameZh,
+        country: league.country,
+        accent: league.accent,
+        sourceUpdatedAt: league.sourceUpdatedAt,
+        playerCount: league.players.length,
+        totalMarketValue: league.players.reduce((sum, player) => sum + player.marketValue, 0),
+        isFallback: true,
+        players: league.players
+      })),
+      overall: fallbackAllPlayers
+    };
+  }
   addRanks(allPlayers, "overallRank");
   loadedLeagues.forEach((league) => addRanks(league.players, "leagueRank"));
 

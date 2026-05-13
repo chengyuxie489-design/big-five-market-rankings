@@ -1,13 +1,16 @@
 import http from "node:http";
-import { readFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { extname, join, normalize } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const __dirname = fileURLToPath(new URL(".", import.meta.url));
 const publicDir = join(__dirname, "public");
+const dataDir = join(__dirname, ".data");
+const liveCacheFile = join(dataDir, "last-successful-rankings.json");
 const PORT = Number(process.env.PORT || 3000);
 const API_BASE = "https://transfermarkt-api.fly.dev";
 const CACHE_TTL_MS = Number(process.env.CACHE_TTL_MS || 30 * 60 * 1000);
+const BACKGROUND_REFRESH_MS = Number(process.env.BACKGROUND_REFRESH_MS || 60 * 60 * 1000);
 const PROFILE_LIMIT_OVERALL = Number(process.env.PROFILE_LIMIT_OVERALL || 20);
 const PROFILE_LIMIT_LEAGUE = Number(process.env.PROFILE_LIMIT_LEAGUE || 8);
 const CLUB_LIMIT_PER_LEAGUE = Number(process.env.CLUB_LIMIT_PER_LEAGUE || 8);
@@ -90,6 +93,7 @@ const mimeTypes = {
 let cache = {
   value: null,
   fetchedAt: 0,
+  lastSuccessfulLive: null,
   pending: null,
   lastError: null
 };
@@ -104,6 +108,19 @@ function json(res, status, payload) {
     "Content-Length": Buffer.byteLength(body)
   });
   res.end(body);
+}
+
+async function readJsonFile(path) {
+  try {
+    return JSON.parse(await readFile(path, "utf8"));
+  } catch {
+    return null;
+  }
+}
+
+async function writeJsonFile(path, value) {
+  await mkdir(dataDir, { recursive: true });
+  await writeFile(path, JSON.stringify(value), "utf8");
 }
 
 async function fetchJson(path) {
@@ -184,6 +201,51 @@ function buildFallbackLeague(league) {
       imageUrl: null,
       profileUrl: `https://www.transfermarkt.com/-/profil/spieler/${id}`
     }))
+  };
+}
+
+function getEmergencySnapshot() {
+  const fallbackLeagues = leagues.map(buildFallbackLeague);
+  const fallbackAllPlayers = fallbackLeagues.flatMap((league) => league.players);
+  addRanks(fallbackAllPlayers, "overallRank");
+  fallbackLeagues.forEach((league) => addRanks(league.players, "leagueRank"));
+  return {
+    refreshedAt: new Date().toISOString(),
+    cacheTtlMs: CACHE_TTL_MS,
+    fallback: true,
+    liveSourceUnavailable: true,
+    source: {
+      name: "Cached emergency snapshot",
+      url: "https://www.transfermarkt.com",
+      note: "Live Transfermarkt API is temporarily unavailable and no successful live cache is available yet."
+    },
+    leagues: fallbackLeagues.map((league) => ({
+      id: league.id,
+      name: league.name,
+      nameZh: league.nameZh,
+      country: league.country,
+      accent: league.accent,
+      sourceUpdatedAt: league.sourceUpdatedAt,
+      playerCount: league.players.length,
+      totalMarketValue: league.players.reduce((sum, player) => sum + player.marketValue, 0),
+      isFallback: true,
+      players: league.players
+    })),
+    overall: fallbackAllPlayers
+  };
+}
+
+function markStaleLiveCache(value, error) {
+  return {
+    ...value,
+    stale: true,
+    liveSourceUnavailable: true,
+    lastError: error?.message || String(error || "Live source unavailable"),
+    servedAt: new Date().toISOString(),
+    source: {
+      ...value.source,
+      note: "Serving the last successful live cache because the live Transfermarkt API is temporarily unavailable."
+    }
   };
 }
 
@@ -308,34 +370,7 @@ async function buildRankings() {
   });
   const allPlayers = loadedLeagues.flatMap((league) => league.players);
   if (!allPlayers.length) {
-    const fallbackLeagues = leagues.map(buildFallbackLeague);
-    const fallbackAllPlayers = fallbackLeagues.flatMap((league) => league.players);
-    addRanks(fallbackAllPlayers, "overallRank");
-    fallbackLeagues.forEach((league) => addRanks(league.players, "leagueRank"));
-    await enrichFallbackImages(fallbackAllPlayers);
-    return {
-      refreshedAt: new Date().toISOString(),
-      cacheTtlMs: CACHE_TTL_MS,
-      fallback: true,
-      source: {
-        name: "Cached emergency snapshot",
-        url: "https://www.transfermarkt.com",
-        note: "Live Transfermarkt API is temporarily unavailable, so an emergency snapshot is shown until the source recovers."
-      },
-      leagues: fallbackLeagues.map((league) => ({
-        id: league.id,
-        name: league.name,
-        nameZh: league.nameZh,
-        country: league.country,
-        accent: league.accent,
-        sourceUpdatedAt: league.sourceUpdatedAt,
-        playerCount: league.players.length,
-        totalMarketValue: league.players.reduce((sum, player) => sum + player.marketValue, 0),
-        isFallback: true,
-        players: league.players
-      })),
-      overall: fallbackAllPlayers
-    };
+    throw new Error("All league data sources are temporarily unavailable");
   }
   addRanks(allPlayers, "overallRank");
   loadedLeagues.forEach((league) => addRanks(league.players, "leagueRank"));
@@ -348,9 +383,11 @@ async function buildRankings() {
   await enrichProfiles([...profileMap.values()]);
 
   const refreshedAt = new Date().toISOString();
-  return {
+  const value = {
     refreshedAt,
     cacheTtlMs: CACHE_TTL_MS,
+    fallback: false,
+    liveSourceUnavailable: false,
     source: {
       name: "Transfermarkt API",
       url: API_BASE,
@@ -369,23 +406,39 @@ async function buildRankings() {
     })),
     overall: allPlayers
   };
+  await writeJsonFile(liveCacheFile, value);
+  return value;
 }
 
 async function getRankings(force = false) {
   const isFresh = cache.value && Date.now() - cache.fetchedAt < CACHE_TTL_MS;
   if (!force && isFresh) return cache.value;
+  if (!cache.lastSuccessfulLive) {
+    cache.lastSuccessfulLive = await readJsonFile(liveCacheFile);
+  }
   if (!cache.pending) {
     cache.pending = buildRankings()
       .then((value) => {
         cache.value = value;
         cache.fetchedAt = Date.now();
+        if (!value.fallback) cache.lastSuccessfulLive = value;
         cache.lastError = null;
         return value;
       })
       .catch((error) => {
         cache.lastError = error.message;
-        if (cache.value) return cache.value;
-        throw error;
+        const staleLiveCache = cache.lastSuccessfulLive || (cache.value && !cache.value.fallback ? cache.value : null);
+        if (staleLiveCache) {
+          cache.value = markStaleLiveCache(staleLiveCache, error);
+          cache.fetchedAt = Date.now();
+          return cache.value;
+        }
+        const emergencySnapshot = getEmergencySnapshot();
+        return enrichFallbackImages(emergencySnapshot.overall).then(() => {
+          cache.value = emergencySnapshot;
+          cache.fetchedAt = Date.now();
+          return cache.value;
+        });
       })
       .finally(() => {
         cache.pending = null;
@@ -448,4 +501,12 @@ const server = http.createServer(async (req, res) => {
 
 server.listen(PORT, () => {
   console.log(`Big Five Market Rankings running on http://localhost:${PORT}`);
+  getRankings(false).catch((error) => {
+    console.warn(`Initial rankings refresh failed: ${error.message}`);
+  });
+  setInterval(() => {
+    getRankings(true).catch((error) => {
+      console.warn(`Background rankings refresh failed: ${error.message}`);
+    });
+  }, BACKGROUND_REFRESH_MS).unref();
 });

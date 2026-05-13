@@ -9,3 +9,7 @@ services:
     envVars:
       - key: CACHE_TTL_MS
         value: "1800000"
+      - key: BACKGROUND_REFRESH_MS
+        value: "3600000"
+      - key: UPSTREAM_TIMEOUT_MS
+        value: "12000"

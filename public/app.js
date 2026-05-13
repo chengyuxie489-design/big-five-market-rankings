@@ -26,7 +26,8 @@ const translations = {
     players: "{count} 名球员",
     total: "总身价",
     snapshotPlayers: "快照 Top {count}",
-    snapshotTotal: "Top {count} 身价合计"
+    snapshotTotal: "Top {count} 身价合计",
+    staleSource: "实时源暂不可用，正在显示最近成功缓存"
   },
   en: {
     brand: "Big Five Value Board",
@@ -56,7 +57,8 @@ const translations = {
     players: "{count} players",
     total: "Squad value",
     snapshotPlayers: "Snapshot top {count}",
-    snapshotTotal: "Top {count} value"
+    snapshotTotal: "Top {count} value",
+    staleSource: "Live source is unavailable; showing the last successful cache"
   }
 };
 
@@ -278,7 +280,9 @@ function hydrateVisiblePortraits() {
 
 function renderMeta() {
   if (!state.data) return;
-  els.updatedAt.textContent = t("updated", { time: formatDate(state.data.refreshedAt) });
+  els.updatedAt.textContent = state.data.liveSourceUnavailable
+    ? `${t("updated", { time: formatDate(state.data.refreshedAt) })} · ${t("staleSource")}`
+    : t("updated", { time: formatDate(state.data.refreshedAt) });
   els.sourceNote.textContent = t("source");
 }
 

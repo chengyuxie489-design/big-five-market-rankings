@@ -24,7 +24,9 @@ const translations = {
     empty: "没有匹配的球员",
     error: "数据加载失败，请稍后重试",
     players: "{count} 名球员",
-    total: "总身价"
+    total: "总身价",
+    snapshotPlayers: "快照 Top {count}",
+    snapshotTotal: "Top {count} 身价合计"
   },
   en: {
     brand: "Big Five Value Board",
@@ -52,7 +54,9 @@ const translations = {
     empty: "No matching players",
     error: "Could not load data. Please try again later.",
     players: "{count} players",
-    total: "Squad value"
+    total: "Squad value",
+    snapshotPlayers: "Snapshot top {count}",
+    snapshotTotal: "Top {count} value"
   }
 };
 
@@ -167,7 +171,11 @@ function renderSummary() {
             <span class="league-logo-fallback">${leagueLogoFallback[league.id] || league.id}</span>
           </span>
         </div>
-        <span>${t("players", { count: league.playerCount })} · ${t("total")}</span>
+        <span>${
+          league.isFallback
+            ? `${t("snapshotPlayers", { count: league.playerCount })} · ${t("snapshotTotal", { count: league.playerCount })}`
+            : `${t("players", { count: league.playerCount })} · ${t("total")}`
+        }</span>
         <b>${formatValue(league.totalMarketValue)}</b>
       `;
       return card;
@@ -214,7 +222,7 @@ function renderRows() {
     image.src = player.imageUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(player.name)}&background=1d2633&color=f6f8fb&size=128`;
     image.alt = player.name;
     if (!player.imageUrl) {
-      image.dataset.playerId = player.id;
+      image.dataset.playerId = player.profilePlayerId || player.id;
       image.dataset.profilePending = "1";
     }
     row.querySelector("strong").textContent = player.name;

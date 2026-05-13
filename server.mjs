@@ -12,6 +12,7 @@ const PROFILE_LIMIT_OVERALL = Number(process.env.PROFILE_LIMIT_OVERALL || 20);
 const PROFILE_LIMIT_LEAGUE = Number(process.env.PROFILE_LIMIT_LEAGUE || 8);
 const CLUB_LIMIT_PER_LEAGUE = Number(process.env.CLUB_LIMIT_PER_LEAGUE || 8);
 const UPSTREAM_TIMEOUT_MS = Number(process.env.UPSTREAM_TIMEOUT_MS || 12000);
+const FALLBACK_IMAGE_TIMEOUT_MS = Number(process.env.FALLBACK_IMAGE_TIMEOUT_MS || 6000);
 
 const leagues = [
   { id: "GB1", name: "Premier League", nameZh: "英超", country: "England", accent: "#31d7a6" },
@@ -93,6 +94,7 @@ let cache = {
   lastError: null
 };
 const profileCache = new Map();
+const fallbackImageCache = new Map();
 
 function json(res, status, payload) {
   const body = JSON.stringify(payload);
@@ -143,6 +145,7 @@ function formatClubName(name) {
 function normalizePlayer(player, club, league) {
   return {
     id: String(player.id),
+    profilePlayerId: String(player.id),
     name: player.name,
     club: formatClubName(club.name),
     clubId: String(club.id),
@@ -166,6 +169,7 @@ function buildFallbackLeague(league) {
     isFallback: true,
     players: (fallbackPlayers[league.id] || []).map(([id, name, club, position, age, nationality, marketValue], index) => ({
       id: `${id}-${league.id}-${index}`,
+      profilePlayerId: id,
       name,
       club,
       clubId: "",
@@ -181,6 +185,38 @@ function buildFallbackLeague(league) {
       profileUrl: `https://www.transfermarkt.com/-/profil/spieler/${id}`
     }))
   };
+}
+
+async function getFallbackImage(playerName) {
+  if (fallbackImageCache.has(playerName)) return fallbackImageCache.get(playerName);
+  try {
+    const response = await fetch(`https://www.thesportsdb.com/api/v1/json/3/searchplayers.php?p=${encodeURIComponent(playerName)}`, {
+      signal: AbortSignal.timeout(FALLBACK_IMAGE_TIMEOUT_MS),
+      headers: {
+        "Accept": "application/json",
+        "User-Agent": "BigFiveMarketRankings/1.0"
+      }
+    });
+    if (!response.ok) throw new Error(`TheSportsDB returned ${response.status}`);
+    const payload = await response.json();
+    const exactName = playerName.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+    const player =
+      payload.player?.find((item) => item.strPlayer?.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase() === exactName) ||
+      payload.player?.[0];
+    const imageUrl = player?.strCutout || player?.strThumb || null;
+    fallbackImageCache.set(playerName, imageUrl);
+    return imageUrl;
+  } catch {
+    fallbackImageCache.set(playerName, null);
+    return null;
+  }
+}
+
+async function enrichFallbackImages(players) {
+  await mapLimit(players, 6, async (player) => {
+    player.imageUrl = await getFallbackImage(player.name);
+    return player;
+  });
 }
 
 async function mapLimit(items, limit, worker) {
@@ -276,6 +312,7 @@ async function buildRankings() {
     const fallbackAllPlayers = fallbackLeagues.flatMap((league) => league.players);
     addRanks(fallbackAllPlayers, "overallRank");
     fallbackLeagues.forEach((league) => addRanks(league.players, "leagueRank"));
+    await enrichFallbackImages(fallbackAllPlayers);
     return {
       refreshedAt: new Date().toISOString(),
       cacheTtlMs: CACHE_TTL_MS,
